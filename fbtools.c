@@ -88,6 +88,8 @@ static void dev_init(void)
 
 extern int debug;
 
+extern int notty;
+
 static void
 fb_switch_signal(int signal)
 {
@@ -108,6 +110,9 @@ fb_switch_signal(int signal)
 void
 fb_switch_release()
 {
+    if(notty)
+    	return;
+    	
     ioctl(tty, VT_RELDISP, 1);
     fb_switch_state = FB_INACTIVE;
     if (debug)
@@ -117,9 +122,12 @@ fb_switch_release()
 void
 fb_switch_acquire()
 {
-    ioctl(tty, VT_RELDISP, VT_ACKACQ);
-    fb_switch_state = FB_ACTIVE;
-    if (debug)
+    if(notty)
+    	return;
+    	
+	ioctl(tty, VT_RELDISP, VT_ACKACQ);
+	fb_switch_state = FB_ACTIVE;
+	if (debug)
 	write(2,"vt: acquire\n",12);
 }
 
@@ -133,19 +141,20 @@ fb_switch_init()
     sigemptyset(&act.sa_mask);
     sigaction(SIGUSR1,&act,&old);
     sigaction(SIGUSR2,&act,&old);
-    
-    if (-1 == ioctl(tty,VT_GETMODE, &vt_mode)) {
-	perror("ioctl VT_GETMODE");
-	exit(1);
-    }
-    vt_mode.mode   = VT_PROCESS;
-    vt_mode.waitv  = 0;
-    vt_mode.relsig = SIGUSR1;
-    vt_mode.acqsig = SIGUSR2;
-    
-    if (-1 == ioctl(tty,VT_SETMODE, &vt_mode)) {
-	perror("ioctl VT_SETMODE");
-	exit(1);
+    if(!notty) {
+		if (-1 == ioctl(tty,VT_GETMODE, &vt_mode)) {
+		perror("ioctl VT_GETMODE");
+		exit(1);
+		}
+		vt_mode.mode   = VT_PROCESS;
+		vt_mode.waitv  = 0;
+		vt_mode.relsig = SIGUSR1;
+		vt_mode.acqsig = SIGUSR2;
+		
+		if (-1 == ioctl(tty,VT_SETMODE, &vt_mode)) {
+		perror("ioctl VT_SETMODE");
+		exit(1);
+		}
     }
     return 0;
 }
@@ -249,6 +258,9 @@ fb_setvt(int vtno)
     struct vt_stat vts;
     char vtname[12];
     
+    if(notty)
+    	return;
+    
     if (vtno < 0) {
 	if (-1 == ioctl(tty,VT_OPENQRY, &vtno) || vtno == -1) {
 	    perror("ioctl VT_OPENQRY");
@@ -301,6 +313,9 @@ static int fb_activate_current(int tty)
 {
     struct vt_stat vts;
     
+    if(notty)
+    	return 0;
+    
     if (-1 == ioctl(tty,VT_GETSTATE, &vts)) {
 	perror("ioctl VT_GETSTATE");
 	return -1;
@@ -325,13 +340,16 @@ fb_init(char *device, char *mode, int vt)
 
     dev_init();
     tty = 0;
-    if (vt != 0)
-	fb_setvt(vt);
+    
+    if(!notty) {
+		if (vt != 0)
+		fb_setvt(vt);
 
-    if (-1 == ioctl(tty,VT_GETSTATE, &vts)) {
-	fprintf(stderr,"ioctl VT_GETSTATE: %s (not a linux console?)\n",
-		strerror(errno));
-	exit(1);
+		if (-1 == ioctl(tty,VT_GETSTATE, &vts)) {
+		fprintf(stderr,"ioctl VT_GETSTATE: %s (not a linux console?)\n",
+			strerror(errno));
+		exit(1);
+		}
     }
     
     if (NULL == device) {
@@ -376,15 +394,18 @@ fb_init(char *device, char *mode, int vt)
 	    exit(1);
 	}
     }
-    if (-1 == ioctl(tty,KDGETMODE, &kd_mode)) {
-	perror("ioctl KDGETMODE");
-	exit(1);
+    
+    if(!notty) {
+		if (-1 == ioctl(tty,KDGETMODE, &kd_mode)) {
+		perror("ioctl KDGETMODE");
+		exit(1);
+		}
+		if (-1 == ioctl(tty,VT_GETMODE, &vt_omode)) {
+		perror("ioctl VT_GETMODE");
+		exit(1);
+		}
+		tcgetattr(tty, &term);
     }
-    if (-1 == ioctl(tty,VT_GETMODE, &vt_omode)) {
-	perror("ioctl VT_GETMODE");
-	exit(1);
-    }
-    tcgetattr(tty, &term);
     
     /* switch mode */
     fb_setmode(mode);
@@ -441,11 +462,14 @@ fb_init(char *device, char *mode, int vt)
 	    goto err;
 	}
     }
-    if (-1 == ioctl(tty,KDSETMODE, KD_GRAPHICS)) {
-	perror("ioctl KDSETMODE");
-	goto err;
+    
+    if(!notty) {
+		if (-1 == ioctl(tty,KDSETMODE, KD_GRAPHICS)) {
+		perror("ioctl KDSETMODE");
+		goto err;
+		}
+		fb_activate_current(tty);
     }
-    fb_activate_current(tty);
 
     /* cls */
     fb_memset(fb_mem+fb_mem_offset, 0, fb_fix.line_length * fb_var.yres);
@@ -460,8 +484,10 @@ void
 fb_cleanup(void)
 {
     /* restore console */
-    if (-1 == ioctl(tty,KDSETMODE, kd_mode))
-	perror("ioctl KDSETMODE");
+    if(!notty) {
+		if (-1 == ioctl(tty,KDSETMODE, kd_mode))
+		perror("ioctl KDSETMODE");
+	}
     if (-1 == ioctl(fb,FBIOPUT_VSCREENINFO,&fb_ovar))
 	perror("ioctl FBIOPUT_VSCREENINFO");
     if (-1 == ioctl(fb,FBIOGET_FSCREENINFO,&fb_fix))
@@ -473,14 +499,16 @@ fb_cleanup(void)
     }
     close(fb);
 
-    if (-1 == ioctl(tty,VT_SETMODE, &vt_omode))
-	perror("ioctl VT_SETMODE");
-    if (orig_vt_no && -1 == ioctl(tty, VT_ACTIVATE, orig_vt_no))
-	perror("ioctl VT_ACTIVATE");
-    if (orig_vt_no && -1 == ioctl(tty, VT_WAITACTIVE, orig_vt_no))
-	perror("ioctl VT_WAITACTIVE");
-    tcsetattr(tty, TCSANOW, &term);
-    close(tty);
+    if(!notty) {
+		if (-1 == ioctl(tty,VT_SETMODE, &vt_omode))
+		perror("ioctl VT_SETMODE");
+		if (orig_vt_no && -1 == ioctl(tty, VT_ACTIVATE, orig_vt_no))
+		perror("ioctl VT_ACTIVATE");
+		if (orig_vt_no && -1 == ioctl(tty, VT_WAITACTIVE, orig_vt_no))
+		perror("ioctl VT_WAITACTIVE");
+		tcsetattr(tty, TCSANOW, &term);
+		close(tty);
+    }
 }
 
 /* -------------------------------------------------------------------- */
@@ -519,6 +547,6 @@ fb_catch_exit_signals(void)
 
     /* cleanup */
     fb_cleanup();
-    fprintf(stderr,"Oops: %s\n",sys_siglist[termsig]);
+    fprintf(stderr,"Oops: %s\n",strsignal(termsig));
     exit(42);
 }

@@ -145,6 +145,7 @@ int read_ahead;
 int editable;
 int blend_msecs;
 int perfmon = 0;
+int notty = 0;
 
 /* font handling */
 static char *fontname = NULL;
@@ -1463,6 +1464,8 @@ main(int argc, char *argv[])
 
     fontname    = cfg_get_str(O_FONT);
     filelist    = cfg_get_str(O_FILE_LIST);
+    
+    notty		= GET_NOTTY();
     
     if (filelist)
 	flist_add_list(filelist);

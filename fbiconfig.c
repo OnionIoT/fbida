@@ -171,6 +171,11 @@ struct cfg_cmdline fbi_cfg[] = {
 	.desc     = "use video mode <arg> (from /etc/fb.modes)",
 
     },{
+	.cmdline  = "notty",
+	.option   = { O_NOTTY },
+	.value    = "1",
+	.desc     = "don't capture control tty (for usage over ssh, serial etc.)",
+    },{
 	/* end of list */
     }
 };

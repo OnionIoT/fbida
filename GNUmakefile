@@ -52,7 +52,8 @@ HAVE_LIBSANE	:= $(call ac_lib,sane_init,sane)
 HAVE_LIBCURL	:= $(call ac_lib,curl_easy_init,curl)
 HAVE_LIBLIRC	:= $(call ac_lib,lirc_init,lirc_client)
 HAVE_MOTIF	:= $(call ac_lib,XmStringGenerate,Xm,-L/usr/X11R6/$(LIB) -lXpm -lXt -lXext -lX11)
-JPEG_VER        := $(call ac_jpeg_ver)
+#JPEG_VER        := $(call ac_jpeg_ver)
+JPEG_VER		:= 62
 endef
 
 # transposing
@@ -149,7 +150,7 @@ ida : LDFLAGS	+= -L/usr/X11R6/$(LIB)
 ida : LDLIBS	+= -lXm -lXpm -lXt -lXext -lX11
 
 # jpeg/exif libs
-ida : LDLIBS	+= -ljpeg -lexif -lm
+ida : LDLIBS	+= -ljpeg -lexif -lm -liconv
 
 # RegEdit.c is good old K&R ...
 RegEdit.o : CFLAGS += -Wno-missing-prototypes -Wno-strict-prototypes
@@ -181,10 +182,9 @@ OBJS_FBI += $(filter-out wr/%,$(call ac_lib_mkvar,$(fbi_libs),OBJS))
 # jpeg/exif libs
 fbi : CFLAGS += $(shell pkg-config --cflags freetype2 fontconfig)
 fbi : LDLIBS += $(shell pkg-config --libs   freetype2 fontconfig)
-fbi : LDLIBS += -ljpeg -lexif -lm
+fbi : LDLIBS += -ljpeg -lexif -lm -liconv
 
 fbi: $(OBJS_FBI) $(OBJS_READER)
-
 
 ########################################################################
 # general rules

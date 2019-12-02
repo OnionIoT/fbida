@@ -36,6 +36,8 @@
 #define O_FONT                  O_OPTIONS, "font"
 #define O_VIDEO_MODE            O_OPTIONS, "video-mode"
 
+#define O_NOTTY            O_OPTIONS, "notty"
+
 #define GET_HELP()		cfg_get_bool(O_HELP,          0)
 #define GET_VERSION()		cfg_get_bool(O_VERSION,       0)
 #define GET_WRITECONF()		cfg_get_bool(O_WRITECONF,     0)
@@ -63,6 +65,8 @@
 #define GET_PCD_RES()           cfg_get_int(O_PCD_RES,        3)
 
 #define GET_GAMMA()             cfg_get_float(O_GAMMA,        1)
+
+#define GET_NOTTY()		cfg_get_int(O_NOTTY,      0)
 
 /* -------------------------------------------------------------------------- */
 
