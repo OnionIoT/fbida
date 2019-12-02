@@ -53,7 +53,7 @@ HAVE_LIBCURL	:= $(call ac_lib,curl_easy_init,curl)
 HAVE_LIBLIRC	:= $(call ac_lib,lirc_init,lirc_client)
 HAVE_MOTIF	:= $(call ac_lib,XmStringGenerate,Xm,-L/usr/X11R6/$(LIB) -lXpm -lXt -lXext -lX11)
 #JPEG_VER        := $(call ac_jpeg_ver)
-JPEG_VER		:= 62
+JPEG_VER		:= 90
 endef
 
 # transposing
